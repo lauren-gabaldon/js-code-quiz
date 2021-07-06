@@ -1,13 +1,16 @@
 var startButton = document.getElementById("startGame");
 var nextButton = document.getElementById("next-btn");
-var shuffledQuestions, currentQuestionIndex;
+let shuffledQuestions;
 var quizContainer = document.getElementById("question-container");
 var questionElement = document.getElementById("question");
-// var answers = document.getElementById("answer-buttons");
-var answerButtonsElement = document.getElementById("answer-buttons");
-var score = 0;
+let currentQuestionIndex = 0;
+let answerButtonsElement = document.querySelector("#answer-buttons");
+let score = 0;
 var timeClock = document.getElementById("timer");
-var timeLength = 60;
+let timeLength = 60;
+let intervalId;
+let highScores = [];
+
 var questions = [
   {
     question: "Which coding language provides functionality to a web page?",
@@ -42,29 +45,56 @@ var questions = [
     ],
   },
 ];
-console.log(startButton);
+
 startButton.addEventListener("click", startGame);
 
 function startGame() {
   console.log("started");
-  shuffledQuestions = questions.sort(() => Math.random() - 0.5);
+  //read high scores from local storage
+  if (localStorage.getItem("highScores")) {
+    highScores = JSON.parse(localStorage.getItem("highScores"));
+  }
+
+  shuffledQuestions = shuffle(questions);
   currentQuestionIndex = 0;
   showQuestion(shuffledQuestions[currentQuestionIndex]);
 
-  setTime();
+  startTimer();
 }
+const shuffle = (array) => {
+  var currentIndex = array.length,
+    randomIndex;
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex],
+      array[currentIndex],
+    ];
+  }
+  return array;
+};
 
-function setNextQuestion(event) {
-  console.log(event);
+function checkAnswer(event) {
   var selectedButton = event.target;
-  var correct = selectedButton.dataset.correct;
-  if (correct === "true") {
+  var correct = !!selectedButton.dataset.correct;
+  if (correct === true) {
+    console.log("correct answer");
     score++;
+  } else {
+    console.log("wrong answer");
+    timeLength = timeLength - 5;
   }
   currentQuestionIndex++;
 
   if (currentQuestionIndex < questions.length) {
     showQuestion(shuffledQuestions[currentQuestionIndex]);
+  } else {
+    stopTimer();
+    saveHighScore();
   }
 }
 
@@ -85,19 +115,57 @@ function showQuestion(arrQuestion) {
       button.dataset.correct = arrQuestion.answers[i].correct;
     }
 
+    button.addEventListener("click", (e) => {
+      checkAnswer(e);
+    });
     answerButtonsElement.appendChild(button);
-    button.addEventListener("click", setNextQuestion);
   }
 }
 
-function setTime() {
+function startTimer() {
   timeClock.textContent = "Time Remaining: " + timeLength;
-  var timerInterval = setInterval(function () {
+  intervalId = setInterval(function () {
     timeLength--;
     timeClock.textContent = "Time Remaining: " + timeLength;
     if (timeLength <= 0) {
-      clearInterval(timerInterval);
+      stopTimer();
       timeClock.textContent = "Time Remaining: 0";
+      saveHighScore();
     }
   }, 1000);
 }
+
+function stopTimer() {
+  clearInterval(intervalId);
+}
+
+function saveHighScore() {
+  //TODO: prompt user for initials
+
+  let initials;
+
+  //create new highScore object
+  let newHighScore = {
+    userInitials: initials || "",
+    score: score,
+  };
+
+  if (highScores.constructor === Array) {
+    //add new highScore object to highScores array
+    highScores.push(newHighScore);
+    //save highScores array to local storage
+    localStorage.setItem("highScores", JSON.stringify(highScores));
+  }
+}
+
+//code quiz
+//Time based multiple choice quiz for 60 seconds
+//Each question has 3 answers only one is correct
+//timer starts for 60 seconds at start button click
+//first question is presented with associated answers
+//if user answers correctly, user gets 1 point if user gets incorrect 5 seconds deducted from timer
+//regardless of outcome, you show next question
+//repeat process until all questions have been answered OR timer ends
+
+//DATA / STRUCTURE
+// 4 questions, each question has 3 answers
